@@ -2,11 +2,44 @@ import pandas as pd
 import os
 import re
 import calendar
+import streamlit as st
+import tempfile
+from Gerar_planilha_comite import padronizar_e_gerar_planilha
 from datetime import datetime
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
+
+st.title("Gerador de Planilha Comitê")
+st.write("Carregue os arquivos Jira e Maximo para gerar a planilha final.")
+
+st.title("Gerador de Planilha Comitê")
+
+jira_file = st.file_uploader("Escolha o arquivo Jira.xlsx", type=["xlsx"])
+maximo_file = st.file_uploader("Escolha o arquivo Maximo.xlsx ou Maximo.csv", type=["xlsx", "csv"])
+
+if jira_file and maximo_file:
+    if st.button("Gerar planilha"):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_output:
+            output_path = tmp_output.name
+        
+        # Salvar arquivos temporariamente para passar o caminho
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_jira:
+            tmp_jira.write(jira_file.read())
+            caminho_jira = tmp_jira.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx" if maximo_file.type=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else ".csv") as tmp_maximo:
+            tmp_maximo.write(maximo_file.read())
+            caminho_maximo = tmp_maximo.name
+
+        try:
+            planilha_gerada = padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, output_path)
+            st.success("Planilha gerada com sucesso!")
+            with open(planilha_gerada, "rb") as f:
+                st.download_button("Baixar planilha", data=f, file_name="planilha_final.xlsx")
+        except Exception as e:
+            st.error(f"Erro ao gerar a planilha: {e}")
 
 
 def ler_jira(caminho_jira, colunas_esperadas):
@@ -366,3 +399,4 @@ def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, nome_saida='planil
     aplicar_formatacao_excel(nome_saida, abas_criadas)
 
     return nome_saida
+
