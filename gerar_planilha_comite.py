@@ -1,46 +1,10 @@
 import pandas as pd
-import os
 import re
 import calendar
-import streamlit as st
-import tempfile
-from Gerar_planilha_comite import padronizar_e_gerar_planilha
-from datetime import datetime
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
-
-st.title("Gerador de Planilha Comitê")
-st.write("Carregue os arquivos Jira e Maximo para gerar a planilha final.")
-
-st.title("Gerador de Planilha Comitê")
-
-jira_file = st.file_uploader("Escolha o arquivo Jira.xlsx", type=["xlsx"])
-maximo_file = st.file_uploader("Escolha o arquivo Maximo.xlsx ou Maximo.csv", type=["xlsx", "csv"])
-
-if jira_file and maximo_file:
-    if st.button("Gerar planilha"):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_output:
-            output_path = tmp_output.name
-        
-        # Salvar arquivos temporariamente para passar o caminho
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_jira:
-            tmp_jira.write(jira_file.read())
-            caminho_jira = tmp_jira.name
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx" if maximo_file.type=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else ".csv") as tmp_maximo:
-            tmp_maximo.write(maximo_file.read())
-            caminho_maximo = tmp_maximo.name
-
-        try:
-            planilha_gerada = padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, output_path)
-            st.success("Planilha gerada com sucesso!")
-            with open(planilha_gerada, "rb") as f:
-                st.download_button("Baixar planilha", data=f, file_name="planilha_final.xlsx")
-        except Exception as e:
-            st.error(f"Erro ao gerar a planilha: {e}")
-
 
 def ler_jira(caminho_jira, colunas_esperadas):
     try:
@@ -54,11 +18,9 @@ def ler_jira(caminho_jira, colunas_esperadas):
         print(f"⚠️ Erro ao ler Jira.xlsx: {e}. Ignorando dados do Jira.")
         return None
 
-
 def ler_maximo(caminho_maximo, colunas_esperadas):
     df_maximo = None
-
-    if caminho_maximo.lower().endswith('.xlsx'):
+    if caminho_maximo.endswith(".xlsx"):
         try:
             df = pd.read_excel(caminho_maximo, sheet_name='Maximo')
             df = df.rename(columns={
@@ -75,8 +37,8 @@ def ler_maximo(caminho_maximo, colunas_esperadas):
             else:
                 print("⚠️ Colunas esperadas não encontradas na aba 'Maximo' do Excel.")
         except Exception as e:
-            print(f"⚠️ Erro ao ler Maximo.xlsx: {e}.")
-    elif caminho_maximo.lower().endswith('.csv'):
+            print(f"⚠️ Erro ao ler Maximo.xlsx: {e}")
+    elif caminho_maximo.endswith(".csv"):
         try:
             df = pd.read_csv(caminho_maximo, encoding="utf-8", sep=",")
             df = df.rename(columns={
@@ -94,17 +56,14 @@ def ler_maximo(caminho_maximo, colunas_esperadas):
                 print("⚠️ Colunas esperadas não encontradas no CSV Maximo.csv.")
         except Exception as e:
             print(f"⚠️ Erro ao ler Maximo.csv: {e}")
-
     if df_maximo is None:
-        raise FileNotFoundError("❌ Não foi possível ler dados válidos do Maximo.")
+        raise FileNotFoundError("❌ Não foi possível ler dados válidos do Maximo (nem Excel nem CSV).")
 
     df_maximo["Planned start date"] = pd.to_datetime(df_maximo["Planned start date"], errors="coerce", dayfirst=True)
     df_maximo["Planned end date"] = pd.to_datetime(df_maximo["Planned end date"], errors="coerce", dayfirst=True)
     df_maximo = df_maximo[df_maximo["Chave"] != "String"]
     df_maximo = df_maximo[df_maximo["Status"] == "AUTH"]
-
     return df_maximo
-
 
 def aplicar_formatacao_excel(caminho_arquivo, abas):
     wb = load_workbook(caminho_arquivo)
@@ -195,7 +154,6 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
             ws.sheet_view.showGridLines = True
 
         elif aba == "Participantes":
-            # Limpar aba para evitar restos antigos
             for row in ws.iter_rows():
                 for cell in row:
                     cell.value = None
@@ -245,7 +203,7 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
 
             for i, row_data in enumerate(participantes):
                 for j, value in enumerate(row_data):
-                    cell = ws.cell(start_row_segunda_tabela + i, column=j + 1, value=value)
+                    cell = ws.cell(row=start_row_segunda_tabela + i, column=j + 1, value=value)
                     if i == 0:
                         cell.fill = fill_header
                         cell.font = fonte_titulo
@@ -303,7 +261,6 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
     wb.save(caminho_arquivo)
     print(f"✅ Formatação aplicada nas abas: {', '.join(abas)}")
 
-
 def is_data_relevante(data):
     if pd.isna(data):
         return False
@@ -328,8 +285,7 @@ def is_data_relevante(data):
 
     return False
 
-
-def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, nome_saida='planilha_final.xlsx'):
+def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, caminho_saida='planilha_final.xlsx'):
     colunas_finais = [
         "Chave", "Resumo", "Status", "Descrição", "Relator",
         "Planned start date", "Planned end date"
@@ -376,7 +332,7 @@ def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, nome_saida='planil
 
     abas_criadas = []
 
-    with pd.ExcelWriter(nome_saida, engine='openpyxl') as writer:
+    with pd.ExcelWriter(caminho_saida, engine='openpyxl') as writer:
         if df_jira is not None:
             df_jira.to_excel(writer, sheet_name='Jira', index=False)
             abas_criadas.append('Jira')
@@ -396,7 +352,6 @@ def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, nome_saida='planil
         else:
             print("ℹ️ Nenhuma change em conflito com fechamento contábil. Aba 'Verificação' não será criada.")
 
-    aplicar_formatacao_excel(nome_saida, abas_criadas)
+    aplicar_formatacao_excel(caminho_saida, abas_criadas)
 
-    return nome_saida
-
+    return caminho_saida
