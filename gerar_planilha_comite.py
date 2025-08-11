@@ -8,11 +8,8 @@ from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
 
-def ler_jira(caminho_jira, colunas_esperadas):
-    if not os.path.exists(caminho_jira):
-        print("⚠️ Arquivo Jira.xlsx não encontrado, ignorando dados do Jira.")
-        return None
 
+def ler_jira(caminho_jira, colunas_esperadas):
     try:
         df_jira = pd.read_excel(caminho_jira, sheet_name='Your Jira Issues', header=0)
         if all(col in df_jira.columns for col in colunas_esperadas):
@@ -24,15 +21,13 @@ def ler_jira(caminho_jira, colunas_esperadas):
         print(f"⚠️ Erro ao ler Jira.xlsx: {e}. Ignorando dados do Jira.")
         return None
 
-def ler_maximo(caminho_pasta, colunas_esperadas):
-    caminho_xlsx = os.path.join(caminho_pasta, "Maximo.xlsx")
-    caminho_csv = os.path.join(caminho_pasta, "Maximo.csv")
 
+def ler_maximo(caminho_maximo, colunas_esperadas):
     df_maximo = None
 
-    if os.path.exists(caminho_xlsx):
+    if caminho_maximo.lower().endswith('.xlsx'):
         try:
-            df = pd.read_excel(caminho_xlsx, sheet_name='Maximo')
+            df = pd.read_excel(caminho_maximo, sheet_name='Maximo')
             df = df.rename(columns={
                 "change_number": "Chave",
                 "summary": "Resumo",
@@ -45,13 +40,12 @@ def ler_maximo(caminho_pasta, colunas_esperadas):
             if all(col in df.columns for col in colunas_esperadas):
                 df_maximo = df[colunas_esperadas]
             else:
-                print("⚠️ Colunas esperadas não encontradas na aba 'Maximo' do Excel, tentando CSV...")
+                print("⚠️ Colunas esperadas não encontradas na aba 'Maximo' do Excel.")
         except Exception as e:
-            print(f"⚠️ Erro ao ler Maximo.xlsx: {e}. Tentando CSV...")
-
-    if df_maximo is None and os.path.exists(caminho_csv):
+            print(f"⚠️ Erro ao ler Maximo.xlsx: {e}.")
+    elif caminho_maximo.lower().endswith('.csv'):
         try:
-            df = pd.read_csv(caminho_csv, encoding="utf-8", sep=",")
+            df = pd.read_csv(caminho_maximo, encoding="utf-8", sep=",")
             df = df.rename(columns={
                 "change_number": "Chave",
                 "summary": "Resumo",
@@ -69,7 +63,7 @@ def ler_maximo(caminho_pasta, colunas_esperadas):
             print(f"⚠️ Erro ao ler Maximo.csv: {e}")
 
     if df_maximo is None:
-        raise FileNotFoundError("❌ Não foi possível ler dados válidos do Maximo (nem Excel nem CSV).")
+        raise FileNotFoundError("❌ Não foi possível ler dados válidos do Maximo.")
 
     df_maximo["Planned start date"] = pd.to_datetime(df_maximo["Planned start date"], errors="coerce", dayfirst=True)
     df_maximo["Planned end date"] = pd.to_datetime(df_maximo["Planned end date"], errors="coerce", dayfirst=True)
@@ -77,6 +71,7 @@ def ler_maximo(caminho_pasta, colunas_esperadas):
     df_maximo = df_maximo[df_maximo["Status"] == "AUTH"]
 
     return df_maximo
+
 
 def aplicar_formatacao_excel(caminho_arquivo, abas):
     wb = load_workbook(caminho_arquivo)
@@ -192,7 +187,6 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
                 ["Participantes", "Lista"],
             ]
 
-            # Escrever primeira tabela (Participantes Obrigatórios)
             for i, row_data in enumerate(participantes_obrigatorios):
                 for j, value in enumerate(row_data):
                     cell = ws.cell(row=i + 1, column=j + 1, value=value)
@@ -210,18 +204,15 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
 
                     cell.border = thin_border
 
-            # Adicionar comentários nas células especificadas
             for coord, texto in comentarios_participantes.items():
                 cell = ws[coord]
                 cell.comment = Comment(texto, "GPT")
 
-            # Espaço entre as tabelas: 3 linhas
             start_row_segunda_tabela = len(participantes_obrigatorios) + 4
 
-            # Escrever segunda tabela (Participantes)
             for i, row_data in enumerate(participantes):
                 for j, value in enumerate(row_data):
-                    cell = ws.cell(row=start_row_segunda_tabela + i, column=j + 1, value=value)
+                    cell = ws.cell(start_row_segunda_tabela + i, column=j + 1, value=value)
                     if i == 0:
                         cell.fill = fill_header
                         cell.font = fonte_titulo
@@ -246,7 +237,6 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
             ws.sheet_view.showGridLines = True
 
         elif aba == "Verificação":
-            # Formatação diferente para aba Verificação
             for i, row in enumerate(ws.iter_rows(min_row=1, max_row=ws.max_row,
                                                 min_col=1, max_col=ws.max_column), 1):
                 for cell in row:
@@ -281,9 +271,6 @@ def aplicar_formatacao_excel(caminho_arquivo, abas):
     print(f"✅ Formatação aplicada nas abas: {', '.join(abas)}")
 
 
-def novo_filtro(): 
-    return 
-
 def is_data_relevante(data):
     if pd.isna(data):
         return False
@@ -293,11 +280,9 @@ def is_data_relevante(data):
 
     ultimo_dia = calendar.monthrange(ano, mes)[1]
 
-    # Último dia do mês
     if dia == ultimo_dia:
         return True
 
-    # Primeiro dia do próximo mês
     if mes == 12:
         proximo_mes = 1
         proximo_ano = ano + 1
@@ -310,17 +295,15 @@ def is_data_relevante(data):
 
     return False
 
-def padronizar_e_gerar_planilha(nome_saida='planilha_final.xlsx'):
-    caminho_pasta = os.path.join(os.getcwd(), "arquivos")
-    caminho_jira = os.path.join(caminho_pasta, "Jira.xlsx")
 
+def padronizar_e_gerar_planilha(caminho_jira, caminho_maximo, nome_saida='planilha_final.xlsx'):
     colunas_finais = [
         "Chave", "Resumo", "Status", "Descrição", "Relator",
         "Planned start date", "Planned end date"
     ]
 
     df_jira = ler_jira(caminho_jira, colunas_finais)
-    df_maximo = ler_maximo(caminho_pasta, colunas_finais)
+    df_maximo = ler_maximo(caminho_maximo, colunas_finais)
 
     dfs = [df for df in [df_jira, df_maximo] if df is not None]
     df_completo = pd.concat(dfs, ignore_index=True)
@@ -358,10 +341,9 @@ def padronizar_e_gerar_planilha(nome_saida='planilha_final.xlsx'):
     df_filtrado = df_completo[filtro_sistemas].copy()
     df_filtrado = df_filtrado[df_filtrado.apply(filtro_data, axis=1)]
 
-    caminho_saida = os.path.join(caminho_pasta, nome_saida)
     abas_criadas = []
 
-    with pd.ExcelWriter(caminho_saida, engine='openpyxl') as writer:
+    with pd.ExcelWriter(nome_saida, engine='openpyxl') as writer:
         if df_jira is not None:
             df_jira.to_excel(writer, sheet_name='Jira', index=False)
             abas_criadas.append('Jira')
@@ -381,7 +363,6 @@ def padronizar_e_gerar_planilha(nome_saida='planilha_final.xlsx'):
         else:
             print("ℹ️ Nenhuma change em conflito com fechamento contábil. Aba 'Verificação' não será criada.")
 
-    aplicar_formatacao_excel(caminho_saida, abas_criadas)
+    aplicar_formatacao_excel(nome_saida, abas_criadas)
 
-if __name__ == "__main__":
-    padronizar_e_gerar_planilha()
+    return nome_saida
