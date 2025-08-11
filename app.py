@@ -63,8 +63,8 @@ st.markdown("""
 st.title("📊 Gerador de Planilha Comitê")
 st.markdown("Envie os arquivos **Jira.xlsx** e **Maximo.xlsx** para gerar a planilha formatada automaticamente.")
 
-jira_file = st.file_uploader("Escolha o arquivo Jira.xlsx", type=["xlsx"])
-maximo_file = st.file_uploader("Escolha o arquivo Maximo.xlsx", type=["xlsx", "csv"])
+jira_file = st.file_uploader("Escolha o arquivo Jira ", type=["xlsx"])
+maximo_file = st.file_uploader("Escolha o arquivo Maximo ", type=["xlsx", "csv"])
 
 if jira_file and maximo_file:
     if st.button("Gerar Planilha"):
@@ -72,3 +72,4 @@ if jira_file and maximo_file:
         st.success("Planilha gerada com sucesso! 🎉")
 else:
     st.info("Aguardando upload dos arquivos para começar...")
+
