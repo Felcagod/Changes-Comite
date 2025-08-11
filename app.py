@@ -60,7 +60,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Gerador de Planilha Comitê")
+st.title("Gerador de Planilhas para o Comitê")
 st.markdown("Envie os arquivos **Jira.xlsx** e **Maximo.xlsx** para gerar a planilha formatada automaticamente.")
 
 jira_file = st.file_uploader("Escolha o arquivo Jira ", type=["xlsx"])
@@ -72,4 +72,5 @@ if jira_file and maximo_file:
         st.success("Planilha gerada com sucesso! 🎉")
 else:
     st.info("Aguardando upload dos arquivos para começar...")
+
 
