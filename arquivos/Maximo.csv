@@ -1,8 +1,0 @@
-change_number,status,summary,details,owner_name,schedule_start,schedule_finish
-String,String,String,String,String,DateTime,DateTime
-CH02201051,WAPPR,[BUYSTOCK]  Drogaria  - Certificado Digital,"Inclusão do Certificado Digital
-
-
-  
-",ROBERTO GUEDES MACHADO,12/08/2025 18:30,13/08/2025 18:30
-CH02201052,WAPPR,[SNGPC]  Drogaria - inclusao Certificado Digital, Inclusão Certificado Digital no sistema SNGPC WEB.,ROBERTO GUEDES MACHADO,12/08/2025 22:00,13/08/2025 22:00
