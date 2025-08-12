@@ -2,6 +2,7 @@ import streamlit as st
 from gerar_planilha_comite import padronizar_e_gerar_planilha
 import tempfile
 from io import BytesIO
+import os 
 
 # CSS customizado
 st.markdown("""
@@ -27,6 +28,9 @@ maximo_file = st.file_uploader("Escolha o arquivo Maximo", type=["xlsx", "csv"])
 
 if jira_file and maximo_file:
     if st.button("Gerar Planilha"):
+        ext_jira = os.path.splitext(jira_file.name)[1]
+        ext_maximo = os.path.splitext(maximo_file.name)[1]
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_jira, \
              tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx" if maximo_file.name.endswith(".xlsx") else ".csv") as tmp_maximo:
             
@@ -51,3 +55,4 @@ if jira_file and maximo_file:
             )
 else:
     st.info("Aguardando upload dos arquivos para começar...")
+
