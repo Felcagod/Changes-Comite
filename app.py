@@ -1,8 +1,9 @@
 import streamlit as st
-import pandas as pd
+from gerar_planilha_comite import padronizar_e_gerar_planilha
+import tempfile
 from io import BytesIO
 
-# CSS customizado para o tema moderno e clean com paleta do Carrefour
+# CSS customizado
 st.markdown("""
     <style>
     .main {background-color: #121212; color: #EEEEEE; font-family: 'Montserrat', sans-serif; padding: 2rem;}
@@ -19,34 +20,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("Gerador de Planilhas para o Comitê")
-st.markdown("Envie os arquivos **Jira.xlsx** e **Maximo.xlsx** para gerar a planilha formatada automaticamente.")
+st.markdown("Envie os arquivos **Jira.xlsx** e **Maximo.xlsx** ou **Maximo.csv** para gerar a planilha formatada automaticamente.")
 
-jira_file = st.file_uploader("Escolha o arquivo Jira ", type=["xlsx"])
-maximo_file = st.file_uploader("Escolha o arquivo Maximo ", type=["xlsx", "csv"])
+jira_file = st.file_uploader("Escolha o arquivo Jira", type=["xlsx"])
+maximo_file = st.file_uploader("Escolha o arquivo Maximo", type=["xlsx", "csv"])
 
 if jira_file and maximo_file:
     if st.button("Gerar Planilha"):
-        # Exemplo: ler os arquivos (ajuste com sua lógica real)
-        df_jira = pd.read_excel(jira_file)
-        if maximo_file.name.endswith(".csv"):
-            df_maximo = pd.read_csv(maximo_file)
-        else:
-            df_maximo = pd.read_excel(maximo_file)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_jira, \
+             tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx" if maximo_file.name.endswith(".xlsx") else ".csv") as tmp_maximo:
+            
+            # Salva os uploads em arquivos temporários
+            tmp_jira.write(jira_file.read())
+            tmp_maximo.write(maximo_file.read())
 
-        # Aqui entra sua lógica para juntar e formatar os dados
-        df_final = pd.concat([df_jira, df_maximo], ignore_index=True)
+            # Gera a planilha final com formatação
+            caminho_saida = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+            padronizar_e_gerar_planilha(tmp_jira.name, tmp_maximo.name, caminho_saida)
 
-        # Criar arquivo em memória
-        output = BytesIO()
-        df_final.to_excel(output, index=False)
-        output.seek(0)
+            # Lê o arquivo final para download
+            with open(caminho_saida, "rb") as f:
+                output_bytes = f.read()
 
-        st.success("Planilha gerada com sucesso! 🎉")
-        st.download_button(
-            label="📥 Baixar Planilha",
-            data=output,
-            file_name="planilha_comite.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+            st.success("Planilha gerada com sucesso! 🎉")
+            st.download_button(
+                label="📥 Baixar Planilha Formatada",
+                data=output_bytes,
+                file_name="planilha_comite.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 else:
     st.info("Aguardando upload dos arquivos para começar...")
